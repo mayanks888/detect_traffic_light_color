@@ -15,7 +15,7 @@ from torch import optim
 import torch.nn.functional as F
 
 class Color_Net_CNN(nn.Module):
-    def __init__(self):
+    def __init__(self,output):
         super(Color_Net_CNN, self).__init__()
         self.layer1 = nn.Sequential(
             nn.Conv2d(3, 8, kernel_size=3, stride=1, padding=2),
@@ -33,7 +33,7 @@ class Color_Net_CNN(nn.Module):
         self.fc1 = nn.Linear(5 * 5 * 32, 1000)
         # self.fc1 = nn.Linear(800, 1000)
         self.fc2 = nn.Linear(1000, 64)
-        self.fc3 = nn.Linear(64, 4)
+        self.fc3 = nn.Linear(64, output)
 
     def forward(self, x):
         out = self.layer1(x)

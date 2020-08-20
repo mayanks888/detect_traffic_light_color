@@ -2,8 +2,14 @@ from __future__ import print_function
 import PIL.ImageOps
 from models import  *
 import torchvision
+from torch.utils.data import Dataset, DataLoader, random_split, SubsetRandomSampler, WeightedRandomSampler,Subset
 from torchsampler import ImbalancedDatasetSampler
 from sampler import BalancedBatchSampler
+from custom_utils import *
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
 normalize = torchvision.transforms.Normalize(
         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
@@ -110,22 +116,47 @@ def main():
     model.to(device)
 
 
-    train_folder_dataset = dset.ImageFolder(root=args.train_dir)
-    train_dataset   = Create_Image_Datasets(imageFolderDataset=train_folder_dataset, transform=transforms.Compose(
-                    [transforms.Resize((res, res)), transforms.ToTensor(),normalize]), should_invert=False)
-    train_dataloader = DataLoader(train_dataset, shuffle=True, num_workers=4, batch_size=args.batch_size)
+    natural_img_dataset= dset.ImageFolder(root=args.train_dir)
+    train_dataset = Create_Image_Datasets(imageFolderDataset=natural_img_dataset, transform=transforms.Compose(
+        [transforms.Resize((res, res)), transforms.ToTensor(), normalize]), should_invert=False)
 
+    dataset_size = len(natural_img_dataset)
+    dataset_indices = list(range(dataset_size))
+    np.random.shuffle(dataset_indices)
+    val_split_index = int(np.floor(0.2 * dataset_size))
+    train_idx, val_idx = dataset_indices[val_split_index:], dataset_indices[:val_split_index]
+    train_sampler = SubsetRandomSampler(train_idx)
+    val_sampler = SubsetRandomSampler(val_idx)
+
+    train_loader = DataLoader(dataset=train_sampler, shuffle=False, batch_size=32,num_workers=4, drop_last=True)
+    val_loader = DataLoader(dataset=train_dataset, shuffle=False, batch_size=1, sampler=val_sampler)
+    # fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(18, 7))
+    # sns.barplot(data=pd.DataFrame.from_dict([get_class_distribution_loaders(train_loader, natural_img_dataset)]).melt(),
+    #             x="variable", y="value", hue="variable", ax=axes[0]).set_title('Train Set')
+    # sns.barplot(data=pd.DataFrame.from_dict([get_class_distribution_loaders(val_loader, natural_img_dataset)]).melt(),
+    #             x="variable", y="value", hue="variable", ax=axes[1]).set_title('Val Set')
+    #
+
+
+
+    # train_folder_dataset, val_folder_dataset = random_split(folder_dataset, (1500-400, 113+400))
+    # train_loader = DataLoader(dataset=train_folder_dataset, shuffle=True, batch_size=1)
+    # val_loader = DataLoader(dataset=val_folder_dataset, shuffle=False, batch_size=1)
+    # print("Length of the train_loader:", len(train_loader))
+    # print("Length of the val_loader:", len(val_loader))
+    # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    1
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
-
-
+    #
+    #
     for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_dataloader, optimizer, epoch)
+        train(args, model, device, train_loader, optimizer, epoch)
         # test(args, model, device, test_loader)
 
-    if (args.save_model):
-        torch.save(model.state_dict(), "color_model.pt")
-        # torch.save(model.state_dict(), './model-save_dict_color-%s.pt' % epoch)
-
+    # if (args.save_model):
+    #     torch.save(model.state_dict(), "color_model.pt")
+    #     # torch.save(model.state_dict(), './model-save_dict_color-%s.pt' % epoch)
+    #
 
 if __name__ == '__main__':
     main()
